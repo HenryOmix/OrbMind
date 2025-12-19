@@ -1,0 +1,2785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  \1
+  <!-- GPT-support v47: AI-Studio preserved; menu swapped from neon orb; target outer-ring bumper + center-only scoring; inner jelly fold + subtle debris; forward aim preview line -->
+  <style>
+    * {
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #050505; /* Deep black */
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 40px;
+    }
+    
+    /* SETTINGS TOGGLE (Top Right) */
+    .settings-trigger {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      transition: background 0.3s, transform 0.2s;
+      opacity: 0.4; /* Semi-transparent */
+      z-index: 200;
+    }
+    /* Ring to visualize the 3s hold */
+    .settings-ring {
+      position: absolute;
+      top: 0; left: 0;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 2px solid #00f3ff;
+      opacity: 0;
+      transform: scale(1.2);
+      transition: opacity 0.3s;
+    }
+    
+    .score-container {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+      margin-top: 60px; /* Space for settings */
+    }
+    #score-display {
+      font-size: 60px;
+      font-weight: 200;
+      letter-spacing: 2px;
+    }
+    .hint {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-top: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    #settings-scrim {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top right, rgba(0,243,255,0.09), rgba(0,0,0,0.0) 55%),
+                  rgba(0,0,0,0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
+      z-index: 240;
+      backdrop-filter: blur(2px);
+    }
+    #settings-scrim.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #settings-menu {
+      position: absolute;
+      top: 76px;
+      right: 18px;
+      width: min(360px, calc(100vw - 36px));
+      max-height: min(74vh, 640px);
+      background: rgba(10, 14, 18, 0.92);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 16px;
+      padding: 14px 14px 10px 14px;
+      color: rgba(255,255,255,0.92);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.65);
+      transform: translateY(-10px) scale(0.98);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+      z-index: 260;
+      overflow: hidden;
+    }
+    #settings-menu.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .menu-header {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 6px 12px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 10px;
+    }
+    .menu-title {
+      font-size: 14px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.72);
+    }
+    .menu-badges {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      white-space: nowrap;
+    }
+    
+    .menu-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.35);
+      color: rgba(255,255,255,0.85);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 5;
+      backdrop-filter: blur(8px);
+      transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+    }
+    .menu-close:hover { transform: scale(1.05); background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.28); }
+    .menu-close:active { transform: scale(0.96); }
+
+    .gpt-color-item {
+      display: block;
+    }
+    #s_rgbMap {
+      width: 100%;
+      max-width: 360px;
+      height: auto;
+      margin-top: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.25);
+      touch-action: none;
+    }
+    .gpt-color-row {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1fr 42px;
+      gap: 10px;
+      align-items: center;
+    }
+    .gpt-color-b input[type="range"] {
+      width: 100%;
+    }
+    .gpt-color-swatch {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+    }
+    .gpt-color-foot {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+.badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 99px;
+      background: rgba(0,243,255,0.55);
+      box-shadow: 0 0 14px rgba(0,243,255,0.3);
+      display: inline-block;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .menu-scroll {
+      overflow: auto;
+      padding-right: 4px;
+      max-height: calc(min(74vh, 640px) - 70px);
+    }
+    .menu-scroll::-webkit-scrollbar { width: 8px; }
+    .menu-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.12);
+      border-radius: 8px;
+    }
+
+    .section { padding: 10px 6px 6px 6px; }
+    .section-title {
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin: 6px 0 10px 0;
+    }
+
+    .menu-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      margin-bottom: 10px;
+    }
+    .menu-item:last-child { margin-bottom: 0; }
+
+    .mi-label { font-size: 14px; color: rgba(255,255,255,0.86); }
+    .mi-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.46);
+      margin-top: 3px;
+      line-height: 1.2;
+    }
+
+    /* Toggle switch */
+    .switch {
+      position: relative;
+      width: 44px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.10);
+      transition: background 0.18s ease, border-color 0.18s ease;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 22px; height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.86);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      transition: transform 0.18s ease, background 0.18s ease;
+    }
+    .switch[data-on="true"] {
+      background: rgba(0,243,255,0.22);
+      border-color: rgba(0,243,255,0.28);
+    }
+    .switch[data-on="true"]::after {
+      transform: translateX(18px);
+      background: rgba(0,243,255,0.86);
+    }
+
+    input[type="range"] { width: 160px; accent-color: #00f3ff; }
+
+    select {
+      width: 160px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.9);
+      outline: none;
+    }
+
+    .btn {
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.86);
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.16s ease;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn.warn {
+      border-color: rgba(255, 0, 85, 0.22);
+      background: rgba(255, 0, 85, 0.08);
+    }
+
+    #toast {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%) translateY(16px);
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(10, 14, 18, 0.92);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: rgba(255,255,255,0.82);
+      font-size: 12px;
+      letter-spacing: 0.6px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      z-index: 400;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    #toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .settings-trigger, #settings-menu, #settings-scrim, #toast, #score-display, .hint { transition: none !important; }
+      .switch::after { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="ui-layer">
+    <!-- 3-Second Hold Trigger -->
+    <div class="settings-trigger" id="settings-trigger">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+        <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.49l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+      </svg>
+      <div class="settings-ring" id="settings-ring"></div>
+    </div>
+    
+        <!-- Settings Menu (ported from neon orb) -->
+    <div id="settings-scrim"></div>
+
+      <div id="settings-menu" aria-label="Settings menu">
+        <div class="menu-header">
+          <div class="menu-title">Settings</div>
+          <div class="menu-badges">
+            <span><span class="badge-dot"></span><span id="compat-text">Ready</span></span>
+          </div>
+          <button class="menu-close" id="settings-close" aria-label="Close settings">✕</button>
+        </div>
+
+        <div class="menu-scroll">
+
+          <!-- MODES (8 emotional physics + art presets) -->
+          <div class="section">
+            <div class="section-title">Modes</div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Emotion Mode</div>
+                <div class="mi-sub">Calm presets that shift physics + visual mood</div>
+              </div>
+              <select id="s_moodMode" aria-label="Select emotion mode">
+                <option value="serenity" selected>Serenity</option>
+                <option value="hope">Hope</option>
+                <option value="joy">Joy</option>
+                <option value="wonder">Wonder</option>
+                <option value="courage">Courage</option>
+                <option value="melancholy">Melancholy</option>
+                <option value="nostalgia">Nostalgia</option>
+                <option value="focus">Focus</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- AUDIO (1-8) -->
+          <div class="section">
+
+    <div class="section-title">Audio</div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Audio Engine</div>
+                <div class="mi-sub">Master switch (starts after first touch)</div>
+              </div>
+              <div class="switch" id="s_audioEnabled" data-on="true" aria-label="Toggle audio"></div>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Master Volume</div>
+                <div class="mi-sub">Overall loudness</div>
+              </div>
+              <input id="s_masterVol" type="range" min="0" max="100" value="45" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Ambience</div>
+                <div class="mi-sub">Pink-noise atmosphere</div>
+              </div>
+              <div class="switch" id="s_ambienceEnabled" data-on="true" aria-label="Toggle ambience"></div>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Ambience Tone</div>
+                <div class="mi-sub">Breath-like filter sweep brightness</div>
+              </div>
+              <input id="s_ambienceTone" type="range" min="0" max="100" value="55" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Gamma 40 Hz</div>
+                <div class="mi-sub">Subtle AM shimmer (optional)</div>
+              </div>
+              <div class="switch" id="s_gammaEnabled" data-on="true" aria-label="Toggle gamma entrainment"></div>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Reverb</div>
+                <div class="mi-sub">Space and softness</div>
+              </div>
+              <input id="s_reverb" type="range" min="0" max="100" value="35" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">SFX</div>
+                <div class="mi-sub">Charge, push, wall, success</div>
+              </div>
+              <div class="switch" id="s_sfxEnabled" data-on="true" aria-label="Toggle sound effects"></div>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">SFX Volume</div>
+                <div class="mi-sub">Per-event effects level</div>
+              </div>
+              <input id="s_sfxVol" type="range" min="0" max="100" value="60" />
+            </div>
+          </div>
+
+          <!-- HAPTICS (9-13) -->
+          <div class="section">
+            <div class="section-title">Haptics</div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Haptics</div>
+                <div class="mi-sub">Requires device support</div>
+              </div>
+              <div class="switch" id="s_hapticsEnabled" data-on="true" aria-label="Toggle haptics"></div>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Intensity</div>
+                <div class="mi-sub">Scales all vibration patterns</div>
+              </div>
+              <input id="s_hapticsIntensity" type="range" min="0" max="100" value="70" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Rain Pattern</div>
+                <div class="mi-sub">Success feedback texture</div>
+              </div>
+              <select id="s_rainMode">
+                <option value="mist">Mist</option>
+                <option value="rain" selected>Rain</option>
+                <option value="storm">Storm</option>
+              </select>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Micro Pulses on Hold</div>
+                <div class="mi-sub">Subtle grain while charging</div>
+              </div>
+              <div class="switch" id="s_holdGrain" data-on="true" aria-label="Toggle micro pulses"></div>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Wall Thump</div>
+                <div class="mi-sub">Bounce feedback</div>
+              </div>
+              <div class="switch" id="s_wallThump" data-on="true" aria-label="Toggle wall thump"></div>
+            </div>
+          </div>
+
+          <!-- VISUALS (14-18) -->
+          <div class="section">
+            <div class="section-title">Visuals</div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Theme</div>
+                <div class="mi-sub">Cyan/Pink is default</div>
+              </div>
+              <select id="s_theme">
+                <option value="cyber" selected>Cyan / Pink</option>
+                <option value="violet">Violet / Gold</option>
+                <option value="mint">Mint / Coral</option>
+              </select>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Trail Length</div>
+                <div class="mi-sub">Motion silkiness</div>
+              </div>
+              <input id="s_trailLen" type="range" min="8" max="60" value="20" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Trail Glow</div>
+                <div class="mi-sub">Brightness of the path</div>
+              </div>
+              <input id="s_trailGlow" type="range" min="0" max="100" value="55" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Screen Shake</div>
+                <div class="mi-sub">Impact feel</div>
+              </div>
+              <div class="switch" id="s_shakeEnabled" data-on="true" aria-label="Toggle screen shake"></div>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Shake Intensity</div>
+                <div class="mi-sub">Scales shake amount</div>
+              </div>
+              <input id="s_shakeIntensity" type="range" min="0" max="100" value="70" />
+            </div>
+          </div>
+
+
+          
+        <!-- COLORS (Touch RGB Map) -->
+        <div class="section">
+          <div class="section-title">Colors</div>
+
+          <div class="menu-item">
+            <div>
+              <div class="mi-label">Edit Color</div>
+              <div class="mi-sub">Select what you are editing</div>
+            </div>
+            <select id="s_colorSlot" aria-label="Select color slot">
+              <option value="bg">Background</option>
+              <option value="accent" selected>Accent</option>
+              <option value="target">Target</option>
+              <option value="jelly">Inner Jelly</option>
+            </select>
+          </div>
+
+          <div class="menu-item gpt-color-item">
+            <div class="gpt-color-head">
+              <div class="mi-label">RGB Map</div>
+              <div class="mi-sub">Tap map: R (x) and G (y). Slide B.</div>
+            </div>
+
+            <canvas id="s_rgbMap" width="240" height="160" aria-label="RGB map"></canvas>
+
+            <div class="gpt-color-row">
+              <div class="gpt-color-b">
+                <div class="mi-sub">B</div>
+                <input id="s_rgbB" type="range" min="0" max="255" value="255" />
+              </div>
+              <div class="gpt-color-swatch" id="s_colorPreview" aria-label="Color preview"></div>
+            </div>
+
+            <div class="gpt-color-foot">
+              <div class="mi-sub" id="s_colorHex">#00F3FF</div>
+              <button class="btn" id="s_colorReset">Reset Slot</button>
+            </div>
+          </div>
+        </div>
+
+<!-- BACKGROUND (New 10 options) -->
+          <div class="section">
+            <div class="section-title">Background</div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Background Style</div>
+                <div class="mi-sub">Classic keeps the original look</div>
+              </div>
+              <select id="s_bgStyle">
+                <option value="classic" selected>Classic</option>
+                <option value="solid">Solid</option>
+                <option value="linear">Linear Gradient</option>
+                <option value="radial">Radial Glow</option>
+                <option value="aurora">Aurora Flow</option>
+                <option value="grid">Neon Grid</option>
+              </select>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Color Cycle</div>
+                <div class="mi-sub">Smoothly progresses through a palette</div>
+              </div>
+              <div class="switch" id="s_bgCycle" data-on="false" aria-label="Toggle background color cycling"></div>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Cycle Speed</div>
+                <div class="mi-sub">How fast colors evolve</div>
+              </div>
+              <input id="s_bgCycleSpeed" type="range" min="0" max="100" value="35" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Palette</div>
+                <div class="mi-sub">Color mood for the background</div>
+              </div>
+              <select id="s_bgPalette">
+                <option value="theme" selected>Theme</option>
+                <option value="ocean">Ocean</option>
+                <option value="sunset">Sunset</option>
+                <option value="forest">Forest</option>
+                <option value="candy">Candy</option>
+                <option value="mono">Mono</option>
+              </select>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Blend</div>
+                <div class="mi-sub">Gradient contrast</div>
+              </div>
+              <input id="s_bgBlend" type="range" min="0" max="100" value="65" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Vignette</div>
+                <div class="mi-sub">Edge darkening</div>
+              </div>
+              <input id="s_vignette" type="range" min="0" max="100" value="0" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Grain</div>
+                <div class="mi-sub">Subtle film texture</div>
+              </div>
+              <div class="switch" id="s_grainEnabled" data-on="false" aria-label="Toggle background grain"></div>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Grain Amount</div>
+                <div class="mi-sub">Texture strength</div>
+              </div>
+              <input id="s_grainAmount" type="range" min="0" max="100" value="18" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Star Density</div>
+                <div class="mi-sub">More or fewer stars</div>
+              </div>
+              <input id="s_starDensity" type="range" min="25" max="200" value="100" />
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Star Twinkle</div>
+                <div class="mi-sub">Adds subtle breathing</div>
+              </div>
+              <div class="switch" id="s_starTwinkle" data-on="false" aria-label="Toggle star twinkle"></div>
+            </div>
+          </div>
+
+
+          <!-- GAMEPLAY (19) -->
+          <div class="section">
+            <div class="section-title">Gameplay</div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Gravity</div>
+                <div class="mi-sub">Base stays the same, this scales it</div>
+              </div>
+              <input id="s_gravity" type="range" min="50" max="150" value="100" />
+            </div>
+
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Wall Bounce</div>
+                <div class="mi-sub">Toggle boundary rebounds</div>
+              </div>
+              <div class="switch" id="s_wallBounce" data-on="true" aria-label="Toggle wall bounce"></div>
+            </div>
+
+          </div>
+
+          <!-- STORAGE (20) -->
+          <div class="section">
+            <div class="section-title">Storage</div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Reset All</div>
+                <div class="mi-sub">Clears settings + saved scores</div>
+              </div>
+              <button class="btn warn" id="s_reset">Reset</button>
+            </div>
+
+            <div class="menu-item">
+              <div>
+                <div class="mi-label">Saved Best Score</div>
+                <div class="mi-sub" id="best-score">0</div>
+              </div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.55)">Auto-saved</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="toast">Saved</div>
+
+<div class="score-container">
+      <div id="score-display">0</div>
+      <div class="hint" id="hint-text">Hold & Release to Impulse</div>
+    </div>
+  </div>
+
+  <canvas id="game"></canvas>
+
+  <script>
+    // --- AUDIO ENGINE: NEUROCALM (40Hz + Pink Noise + Singing Bowl) ---
+    let actx, master, filterNode;
+    let audioInitialized = false;
+
+    function initAudio() {
+      if (audioInitialized) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      actx = new AC();
+      master = actx.createGain();
+      master.gain.value = 0.45;
+      master.connect(actx.destination);
+
+      // 1. Pink Noise (Atmosphere)
+      const bufferSize = 4096;
+      const pinkNoise = (function() {
+          let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
+          const node = actx.createScriptProcessor(bufferSize, 1, 1);
+          node.onaudioprocess = function(e) {
+              const output = e.outputBuffer.getChannelData(0);
+              for (let i = 0; i < bufferSize; i++) {
+                  const white = Math.random() * 2 - 1;
+                  b0 = 0.99886 * b0 + white * 0.0555179;
+                  b1 = 0.99332 * b1 + white * 0.0750759;
+                  b2 = 0.96900 * b2 + white * 0.1538520;
+                  b3 = 0.86650 * b3 + white * 0.3104856;
+                  b4 = 0.55000 * b4 + white * 0.5329522;
+                  b5 = -0.7616 * b5 - white * 0.0168980;
+                  output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                  output[i] *= 0.11; 
+                  b6 = white * 0.115926;
+              }
+          };
+          return node;
+      })();
+
+      filterNode = actx.createBiquadFilter();
+      filterNode.type = 'lowpass';
+      filterNode.Q.value = 1;
+      filterNode.frequency.value = 200; 
+
+      pinkNoise.connect(filterNode);
+      filterNode.connect(master);
+
+      // 2. 40Hz Gamma Entrainment
+      const carrier = actx.createOscillator();
+      carrier.frequency.value = 200; 
+      const mod = actx.createOscillator();
+      mod.frequency.value = 40; 
+      const modGain = actx.createGain();
+      modGain.gain.value = 50; 
+      const carrierGain = actx.createGain();
+      carrierGain.gain.value = 0.03; 
+
+      mod.connect(modGain);
+      modGain.connect(carrier.frequency); 
+      carrier.connect(carrierGain).connect(master);
+      
+      carrier.start();
+      mod.start();
+      audioInitialized = true;
+    }
+
+    function updateAudioBreath(time) {
+      if(!filterNode) return;
+      const breathPhase = (Math.sin(time * 0.8) + 1) / 2; 
+      const minFreq = 150;
+      const maxFreq = 650;
+      const freq = minFreq + (breathPhase * (maxFreq - minFreq));
+      filterNode.frequency.setTargetAtTime(freq, actx.currentTime, 0.1);
+    }
+
+    function playSound(type) {
+      if(!actx) return;
+      const now = actx.currentTime;
+      const osc = actx.createOscillator();
+      const g = actx.createGain();
+      osc.connect(g).connect(master);
+
+      if (type === 'charge') {
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.linearRampToValueAtTime(300, now + 1);
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(0.1, now + 1);
+        osc.start(now); osc.stop(now + 1.2);
+      } else if (type === 'push') {
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+        g.gain.setValueAtTime(0.2, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+      } else if (type === 'wall') {
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.05);
+        g.gain.setValueAtTime(0.1, now);
+        g.gain.linearRampToValueAtTime(0, now + 0.05);
+        osc.start(now); osc.stop(now + 0.05);
+      } else if (type === 'success') {
+        // GENTLEST SOUND: Tibetan Bowl Resonance
+        // Low frequency sine wave with long attack/release
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(174, now); // 174Hz (Solfeggio frequency for pain/stress)
+        
+        // Soft Attack
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(0.25, now + 0.1);
+        // Long Decay
+        g.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+        
+        osc.start(now); 
+        osc.stop(now + 2.5);
+      }
+    }
+
+    // --- RAIN HAPTICS ENGINE ---
+    const Haptics = {
+      active: ('vibrate' in navigator),
+      
+      grain: () => { if (Haptics.active) navigator.vibrate(3); },
+      recoil: () => { if (Haptics.active) navigator.vibrate(25); },
+      wall: () => { if (Haptics.active) navigator.vibrate(8); },
+      
+      // EXQUISITE RAIN SIMULATION
+      rain: () => {
+        if (!Haptics.active) return;
+        // Generate a stochastic pattern of micro-pulses (3-6ms) with random gaps
+        const drops = [];
+        const count = 8; // Number of droplets
+        for(let i=0; i<count; i++) {
+           drops.push(Math.floor(3 + Math.random() * 4)); // Pulse duration
+           drops.push(Math.floor(20 + Math.random() * 60)); // Gap duration
+        }
+        navigator.vibrate(drops);
+      }
+    };
+
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d", { alpha: false }); 
+    const scoreEl = document.getElementById("score-display");
+    const hintEl = document.getElementById("hint-text");
+
+    // --- CONFIG ---
+    let width, height;
+    let pixelRatio = 1;
+
+    // Colors (live-updatable via Settings Menu)
+    let COLOR_BG = "#050508";
+    const COLOR_ORB = "#ffffff";
+    let COLOR_ORB_GLOW = "#00f3ff"; // Accent
+    let COLOR_TARGET = "#ff0055";   // Target
+    let COLOR_TRAIL = "#00f3ff";
+    let COLOR_JELLY = "#ff88aa";
+
+    // --- COLOR HELPERS (small, cached; avoids per-frame parsing) ---
+    const __gptColorCache = Object.create(null);
+    function _gptHexToRgb(hex) {
+      const h = (hex || "#000000").toString().trim().toLowerCase();
+      if (__gptColorCache[h]) return __gptColorCache[h];
+      let x = h[0] === "#" ? h.slice(1) : h;
+      if (x.length === 3) x = x.split("").map(c => c + c).join("");
+      const n = parseInt(x, 16) || 0;
+      const rgb = { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+      __gptColorCache[h] = rgb;
+      return rgb;
+    }
+    function _gptRGBA(hex, a) {
+      const c = _gptHexToRgb(hex);
+      return `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`;
+    }
+    function _gptRgbToHex(r, g, b) {
+      const rr = Math.max(0, Math.min(255, r|0)).toString(16).padStart(2, "0");
+      const gg = Math.max(0, Math.min(255, g|0)).toString(16).padStart(2, "0");
+      const bb = Math.max(0, Math.min(255, b|0)).toString(16).padStart(2, "0");
+      return ("#" + rr + gg + bb).toLowerCase();
+    }
+
+    // --- GAME STATE ---
+    const orb = {
+      x: 0, y: 0,
+      vx: 0, vy: 0,
+      radius: 20,
+      mass: 1
+    };
+
+    const target = {
+      x: 0, y: 0,
+      radius: 55,
+      angle: 0
+    };
+
+    // --- INNER TARGET "JELLY" RING (VISUAL ONLY) ---
+    // The inner ring is a soft, deformable stroke that can crumple and shed "jelly" fragments on impact.
+    // Physics/scoring remain unchanged except where explicitly handled elsewhere.
+    const INNER_RING_SCALE = 0.8;
+    const INNER_ARC_START = 0;
+    const INNER_ARC_END = Math.PI * 1.5; // 270° arc (same geometry as the drawn ring)
+    const INNER_JELLY_SEGMENTS = 56;
+
+    let innerJellySegs = [];
+    const jellyDebris = [];
+    let lastInnerJellyHitT = -999;
+    let orbJellyPulse = 0; // absorption glow pulse (visual only)
+
+    function resetInnerJelly() {
+      innerJellySegs = [];
+      const span = INNER_ARC_END - INNER_ARC_START;
+      for (let i = 0; i < INNER_JELLY_SEGMENTS; i++) {
+        const t = (INNER_JELLY_SEGMENTS === 1) ? 0 : (i / (INNER_JELLY_SEGMENTS - 1));
+        const a = INNER_ARC_START + t * span;
+        innerJellySegs.push({ a, off: 0, v: 0, da: 0, av: 0, cut: 0 });
+      }
+    }
+
+    function updateInnerJelly(dt) {
+      // Viscoelastic "jelly": slower, less spiky, more impact-follow and gentle recovery.
+      const k = 65;      // radial spring strength
+      const damp = 22;   // radial damping (higher = more viscous)
+      const kA = 80;     // angular spring strength (for fold/shear)
+      const dampA = 18;  // angular damping
+      const heal = 2.2;  // dissolve recovery per second
+
+      for (const s of innerJellySegs) {
+        // Radial dynamics
+        s.v += (-k * s.off - damp * s.v) * dt;
+        s.off += s.v * dt;
+
+        // Clamp to keep it subtle
+        if (s.off > 12) s.off = 12;
+        if (s.off < -14) s.off = -14;
+
+        // Angular "fold" dynamics (optional fields for backward safety)
+        const da = s.da || 0;
+        const av = s.av || 0;
+        s.av = av + (-kA * da - dampA * av) * dt;
+        s.da = da + s.av * dt;
+
+        if (s.da > 0.40) s.da = 0.40;
+        if (s.da < -0.40) s.da = -0.40;
+
+        // Local dissolve fades back quickly
+        s.cut = Math.max(0, s.cut - heal * dt);
+      }
+    }
+
+    function spawnJellyDebris(hitX, hitY, vx, vy, nx, ny, intensity) {
+      // Subtle, low-opacity micro-fragments that blend out quickly (visual only).
+      // v49: fragments "pop" then magnetically absorb into the orb (AI-Studio nectar-style).
+      const count = 4 + Math.floor(intensity * 8);
+      for (let i = 0; i < count; i++) {
+        const jitter = (Math.random() - 0.5) * 8;
+
+        // Initial pop: mostly along ring normal + a little inherited velocity + noise
+        const force = 100 + Math.random() * 150;
+        const pvx = vx * 0.18 + nx * force + (Math.random() - 0.5) * 120;
+        const pvy = vy * 0.18 + ny * force + (Math.random() - 0.5) * 120;
+
+        jellyDebris.push({
+          x: hitX + jitter,
+          y: hitY + jitter,
+          vx: pvx,
+          vy: pvy,
+          rot: Math.random() * Math.PI * 2,
+          omega: (Math.random() - 0.5) * 5,
+          w: 2 + Math.random() * 4,
+          h: 1.5 + Math.random() * 3.5,
+
+          // Nectar-style absorption timing
+          t: 0,
+          absorbed: false,
+
+          // v50: keep the stream alive longer; fade is driven by proximity to the orb, not by time.
+          fade: 1.0,
+          life: 1.0,
+          decay: 3.0 + Math.random() * 1.5
+        });
+      }
+    }
+
+    function crumpleInnerJelly(localInnerA, vx, vy, hitX, hitY, nx, ny, timeInSeconds) {
+      // Small cooldown to avoid "buzzing" when the orb grazes the ring
+      if (timeInSeconds - lastInnerJellyHitT < 0.08) return;
+      lastInnerJellyHitT = timeInSeconds;
+
+      const speed = Math.hypot(vx, vy);
+      const intensity = Math.min(1, speed / 900);
+
+      // Map local angle to segment index
+      const t = (localInnerA - INNER_ARC_START) / (INNER_ARC_END - INNER_ARC_START);
+      const idx = Math.max(0, Math.min(INNER_JELLY_SEGMENTS - 1, Math.round(t * (INNER_JELLY_SEGMENTS - 1))));
+
+      // Deform direction based on whether the orb is moving inward or outward along the ring normal
+      const tx = -ny;
+      const ty = nx;
+      const vn = vx * nx + vy * ny;           // normal velocity component
+      const vt = vx * tx + vy * ty;           // tangential velocity component
+      const dir = (vn < 0) ? -1 : 1;
+
+      const punch = Math.min(9, 1.6 + intensity * 7.0);                 // px of deformation
+      const shear = Math.max(-0.22, Math.min(0.22, vt / 4200));         // radians of fold/shear (subtle)
+
+      for (let i = 0; i < innerJellySegs.length; i++) {
+        const d = Math.abs(i - idx);
+        if (d > 10) continue;
+
+        // Smooth, wide influence looks more like jelly folding rather than crumpling
+        const w = Math.exp(-(d * d) / 18);
+
+        const deltaOff = dir * punch * w;
+
+        // Drive both position and velocity for a "fold over" feel (less spiky than a pure impulse)
+        innerJellySegs[i].off += deltaOff * 0.28;
+        innerJellySegs[i].v += deltaOff * 9.0;
+
+        // Tangential fold that trails the motion slightly
+        innerJellySegs[i].da = (innerJellySegs[i].da || 0) + shear * w * 0.16;
+        innerJellySegs[i].av = (innerJellySegs[i].av || 0) + shear * w * 26.0;
+
+        // Local dissolve instead of hard tearing
+        innerJellySegs[i].cut = Math.min(1, innerJellySegs[i].cut + (0.16 + intensity * 0.26) * w);
+      }
+
+      spawnJellyDebris(hitX, hitY, vx, vy, nx, ny, intensity * 0.75);
+    }
+
+    function updateJellyDebris(dt) {
+      // v49: jelly flecks switch from "fall + fade" to "pop then absorb into orb" (AI-Studio nectar-style).
+      for (let i = jellyDebris.length - 1; i >= 0; i--) {
+        const p = jellyDebris[i];
+
+        p.t = (p.t || 0) + dt;
+        if (p.fade == null) p.fade = 1.0;
+
+        // Base motion + friction
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vx *= 0.92;
+        p.vy *= 0.92;
+
+        // After a brief pop-out, magnetically pull into the orb.
+        if (p.t > 0.15) {
+          const dx = orb.x - p.x;
+          const dy = orb.y - p.y;
+          const dist = Math.hypot(dx, dy) || 0.0001;
+
+          // v50: fade only as it nears the orb (so it doesn't "die" mid-flight).
+          const fadeStart = orb.radius * 2.9;
+          if (dist < fadeStart) {
+            let f = (dist - orb.radius) / (fadeStart - orb.radius);
+            if (f < 0) f = 0;
+            if (f > 1) f = 1;
+            // smoothstep
+            p.fade = f * f * (3 - 2 * f);
+          } else {
+            p.fade = 1.0;
+          }
+
+          if (dist < orb.radius) {
+            // ABSORPTION EVENT (visual only)
+            createExplosion(p.x, p.y, 3, COLOR_JELLY);
+            orbJellyPulse = 1.0;
+            jellyDebris.splice(i, 1);
+            continue;
+          } else {
+            // v50: slightly gentler pull so the stream "follows" a touch longer.
+            const speed = 1050 * dt;
+            p.vx += (dx / dist) * speed;
+            p.vy += (dy / dist) * speed;
+            // Damping to prevent orbiting
+            p.vx *= 0.88;
+            p.vy *= 0.88;
+          }
+        }
+
+        p.rot += p.omega * dt;
+
+        // Keep a safety fade-out so debris can't accumulate indefinitely.
+        p.life -= dt / p.decay;
+        if (p.life <= 0) jellyDebris.splice(i, 1);
+      }
+    }
+
+    function drawJellyDebris() {
+      if (jellyDebris.length === 0) return;
+
+      // Fluid streaks (matches AI-Studio nectar rendering style).
+      ctx.lineCap = "round";
+      for (const p of jellyDebris) {
+        const speed = Math.hypot(p.vx, p.vy);
+        const stretch = Math.min(speed * 0.05, 18);
+
+        const angle = Math.atan2(p.vy, p.vx);
+        const tailX = p.x - Math.cos(angle) * stretch;
+        const tailY = p.y - Math.sin(angle) * stretch;
+
+        const lifeA = Math.max(0, Math.min(1, p.life));
+        const fadeA = (p.fade == null) ? 1.0 : Math.max(0, Math.min(1, p.fade));
+        const phaseA = (((p.t || 0) < 0.15) ? 0.65 : 0.95);
+        const a = lifeA * fadeA * phaseA;
+        if (a <= 0.001) continue;
+
+        // v50: a slightly more "pixel-fine" stream: soft outer + crisp inner.
+        ctx.strokeStyle = COLOR_JELLY;
+
+        ctx.globalAlpha = a * 0.55;
+        ctx.lineWidth = Math.max(1, (p.w + p.h) * 0.52);
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+
+        ctx.globalAlpha = a;
+        ctx.lineWidth = Math.max(0.75, (p.w + p.h) * 0.26);
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+
+        // Tiny head spark for depth (subtle).
+        ctx.fillStyle = COLOR_JELLY;
+        ctx.globalAlpha = a * 0.65;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1.0;
+    }
+
+    function drawInnerJellyRing(baseR) {
+      if (!innerJellySegs || innerJellySegs.length < 2) return;
+
+      ctx.save();
+      ctx.strokeStyle = COLOR_JELLY;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      // Lower opacity, smoother fade, and segment-wise alpha for subtle "fold + dissolve"
+      const passAlphas = [0.16, 0.44];
+      const passWidths = [4, 2];
+
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.lineWidth = passWidths[pass];
+
+        for (let i = 0; i < innerJellySegs.length - 1; i++) {
+          const s0 = innerJellySegs[i];
+          const s1 = innerJellySegs[i + 1];
+
+          const cut = Math.max(s0.cut || 0, s1.cut || 0);
+          const a = passAlphas[pass] * (1 - 0.75 * cut);
+          if (a < 0.02) continue;
+
+          ctx.globalAlpha = a;
+
+          const a0 = (s0.a || 0) + (s0.da || 0);
+          const a1 = (s1.a || 0) + (s1.da || 0);
+
+          const r0 = baseR + (s0.off || 0);
+          const r1 = baseR + (s1.off || 0);
+
+          const x0 = Math.cos(a0) * r0;
+          const y0 = Math.sin(a0) * r0;
+          const x1 = Math.cos(a1) * r1;
+          const y1 = Math.sin(a1) * r1;
+
+          ctx.beginPath();
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x1, y1);
+          ctx.stroke();
+        }
+      }
+
+      ctx.globalAlpha = 1.0;
+      ctx.restore();
+    }
+
+    let score = 0;
+    
+    // Interaction
+    let isPressing = false;
+    let pressStartPos = { x: 0, y: 0 };
+    let pressStartTime = 0;
+    let frameCount = 0; 
+
+    // Visuals Arrays
+    const particles = [];
+    const stars = [];
+    const trail = [];
+    
+    // Screen shake
+    let shakeIntensity = 0;
+
+    // --- RESIZE ---
+    function resize() {
+      pixelRatio = window.devicePixelRatio || 1;
+      width = window.innerWidth;
+      height = window.innerHeight;
+      
+      canvas.width = width * pixelRatio;
+      canvas.height = height * pixelRatio;
+      
+      ctx.scale(pixelRatio, pixelRatio);
+      
+      // Initialize orb center if first run
+      if (orb.x === 0) {
+        orb.x = width / 2;
+        orb.y = height / 2;
+        placeTarget();
+        initStars();
+      }
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    // --- SETUP HELPERS ---
+    function placeTarget() {
+      const margin = 100;
+      target.x = margin + Math.random() * (width - margin * 2);
+      target.y = margin + Math.random() * (height - margin * 2);
+      resetInnerJelly();
+    }
+
+    function initStars() {
+      for(let i=0; i<80; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          size: Math.random() * 2,
+          alpha: Math.random()
+        });
+      }
+    }
+
+    // --- SETTINGS UI LOGIC (3s Hold) ---
+    const trigger = document.getElementById('settings-trigger');
+    const ring = document.getElementById('settings-ring');
+    const menu = document.getElementById('settings-menu');
+    const scrim = document.getElementById('settings-scrim');
+    let holdTimer = null;
+    let holdStartTime = 0;
+    let holdingSettings = false;
+
+    function startSettingsHold(e) {
+      e.preventDefault(); 
+      e.stopPropagation();
+      holdingSettings = true;
+      holdStartTime = performance.now();
+      
+      trigger.style.opacity = 1.0;
+      ring.style.opacity = 1;
+      ring.style.transition = "transform 3s linear";
+      ring.style.transform = "scale(0)"; // Shrink ring to center over 3s
+      
+      holdTimer = setTimeout(() => {
+        // Activation (keep 3s hold to open)
+        const willOpen = !menu.classList.contains('visible');
+        menu.classList.toggle('visible', willOpen);
+        if (scrim) scrim.classList.toggle('visible', willOpen);
+        trigger.classList.toggle('open', willOpen);
+
+        Haptics.recoil(); // Confirm open/close
+        endSettingsHold();
+}, 3000);
+    }
+
+    function endSettingsHold() {
+      clearTimeout(holdTimer);
+      holdingSettings = false;
+      trigger.style.opacity = 0.4;
+      
+      // Reset ring
+      ring.style.transition = "none";
+      ring.style.transform = "scale(1.2)";
+      ring.style.opacity = 0;
+    }
+
+    
+
+function closeSettingsMenu() {
+  menu.classList.remove('visible');
+  if (scrim) scrim.classList.remove('visible');
+  trigger.classList.remove('open');
+}
+
+// Close on scrim tap/click (opening still requires 3s hold)
+if (scrim) {
+  scrim.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); closeSettingsMenu(); Haptics.recoil(); });
+  scrim.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); closeSettingsMenu(); Haptics.recoil(); }, { passive: false });
+}
+// v48: Close icon + Escape key close (menu only)
+const menuCloseBtn = document.getElementById("settings-close");
+if (menuCloseBtn) {
+  menuCloseBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeSettingsMenu(); });
+  menuCloseBtn.addEventListener("touchstart", (e) => { e.preventDefault(); e.stopPropagation(); closeSettingsMenu(); }, { passive: false });
+}
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && menu.classList.contains("open")) closeSettingsMenu();
+});
+//
+// Prevent clicks inside menu from closing it
+menu.addEventListener('mousedown', (e) => e.stopPropagation());
+menu.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+
+trigger.addEventListener('mousedown', startSettingsHold);
+    trigger.addEventListener('touchstart', startSettingsHold, {passive: false});
+    window.addEventListener('mouseup', endSettingsHold);
+    window.addEventListener('touchend', endSettingsHold);
+
+
+    // --- INPUT HANDLING (Game) ---
+    function onDown(x, y) {
+      if(holdingSettings) return; // Don't play if touching settings
+
+      // Init Audio on first interaction
+      if (!audioInitialized) initAudio();
+      if (actx && actx.state === 'suspended') actx.resume();
+
+      isPressing = true;
+      pressStartPos = { x, y };
+      pressStartTime = performance.now();
+      hintEl.style.opacity = 0; 
+      
+      Haptics.grain();
+      playSound('charge');
+    }
+
+    function onUp() {
+      if (!isPressing) return;
+      isPressing = false;
+      
+      const now = performance.now();
+      let duration = now - pressStartTime;
+      
+      const minDur = 40;
+      const maxDur = 800; 
+      if (duration < minDur) duration = minDur;
+      if (duration > maxDur) duration = maxDur;
+
+      let dx = orb.x - pressStartPos.x;
+      let dy = orb.y - pressStartPos.y;
+      let dist = Math.hypot(dx, dy);
+      if (dist < 0.1) dist = 0.1; 
+
+      const nx = dx / dist;
+      const ny = dy / dist;
+
+      const strength = duration / maxDur; 
+      const power = 1000 * strength; 
+      orb.vx += nx * power;
+      orb.vy += ny * power;
+
+      createExplosion(orb.x, orb.y, 10, COLOR_ORB_GLOW);
+      shakeIntensity = 5 * strength;
+
+      Haptics.recoil();
+      playSound('push');
+    }
+
+    canvas.addEventListener("mousedown", e => onDown(e.clientX, e.clientY));
+    window.addEventListener("mouseup", onUp);
+    canvas.addEventListener("touchstart", e => {
+      e.preventDefault();
+      onDown(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+    window.addEventListener("touchend", onUp);
+
+    // --- PARTICLE SYSTEM ---
+    function createExplosion(x, y, count, color) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 4 + 1;
+        particles.push({
+          x: x, 
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1.0,
+          decay: Math.random() * 0.03 + 0.01,
+          color: color,
+          size: Math.random() * 3 + 1
+        });
+      }
+    }
+
+    // --- GAME LOOP ---
+    let lastTime = performance.now();
+
+    function loop(time) {
+      const dt = Math.min(0.05, (time - lastTime) / 1000);
+      lastTime = time;
+
+      update(dt, time / 1000);
+      draw();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    function update(dt, timeInSeconds) {
+      frameCount++;
+
+
+      // Store previous position for robust target-arc collision (prevents tunneling)
+      const prevX = orb.x;
+      const prevY = orb.y;
+      if(audioInitialized) updateAudioBreath(timeInSeconds);
+
+      if (isPressing && frameCount % 6 === 0) {
+        Haptics.grain();
+      }
+
+      // 1. Physics (Increased Gravity by 5%: 45 -> 47.25)
+      orb.vy += 47.25 * dt; 
+      orb.x += orb.vx * dt;
+      orb.y += orb.vy * dt;
+
+      const drag = 0.98;
+      orb.vx *= drag;
+      orb.vy *= drag;
+
+      const r = orb.radius;
+      let hitWall = false;
+      if (orb.x < r) { orb.x = r; orb.vx *= -0.7; hitWall = true; }
+      if (orb.x > width - r) { orb.x = width - r; orb.vx *= -0.7; hitWall = true; }
+      if (orb.y < r) { orb.y = r; orb.vy *= -0.7; hitWall = true; }
+      if (orb.y > height - r) { orb.y = height - r; orb.vy *= -0.7; hitWall = true; }
+
+      if (hitWall) {
+        if (Math.abs(orb.vx) + Math.abs(orb.vy) > 20) {
+           Haptics.wall();
+           playSound('wall');
+           shakeIntensity = Math.min(shakeIntensity + 2, 10);
+        }
+      }
+
+      shakeIntensity *= 0.9;
+      if (shakeIntensity < 0.1) shakeIntensity = 0;
+
+      trail.push({ x: orb.x, y: orb.y, size: orb.radius });
+      if (trail.length > 20) trail.shift();
+
+      const dx = orb.x - target.x;
+      const dy = orb.y - target.y;
+      const dist = Math.hypot(dx, dy);
+      
+      target.angle += dt; 
+
+
+      // --- TARGET OUTER RING BUMPER ---
+      // The outer target arc behaves like a pinball bumper wall: it reflects with extra energy.
+      // Only the drawn outer arc segment is solid; its 90° gap remains passable.
+      const TAU = Math.PI * 2;
+      const OUTER_ARC_START = 0;
+      const OUTER_ARC_END = Math.PI * 1.5; // 270° arc
+      const bumperRestitution = 1.4; // 2× the normal wall bounce factor (0.7 -> 1.4)
+
+      if (dist > 0.0001) {
+        // Angle of orb relative to target, expressed in the target's rotating frame
+        let localA = Math.atan2(dy, dx) - target.angle;
+        localA = ((localA % TAU) + TAU) % TAU;
+
+        const inOuterArc = (localA >= OUTER_ARC_START && localA <= OUTER_ARC_END);
+        if (inOuterArc) {
+          const ringR = target.radius;
+
+          // Detect boundary overlap OR a full-step crossing (tunneling)
+          const prevDx = prevX - target.x;
+          const prevDy = prevY - target.y;
+          const prevDist = Math.hypot(prevDx, prevDy);
+          const crossed = (prevDist - ringR) * (dist - ringR) <= 0;
+          const overlap = Math.abs(dist - ringR) < orb.radius || crossed;
+
+          if (overlap) {
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const vN = orb.vx * nx + orb.vy * ny;
+
+            const outside = dist >= ringR;
+            const movingIntoBoundary = outside ? (vN < 0) : (vN > 0);
+
+            if (movingIntoBoundary) {
+              // Reposition to the boundary surface
+              const desired = outside ? (ringR + orb.radius) : (ringR - orb.radius);
+              orb.x = target.x + nx * desired;
+              orb.y = target.y + ny * desired;
+
+              // Reflect + energize along the normal (tangential component preserved)
+              const vNx = vN * nx;
+              const vNy = vN * ny;
+              const vTx = orb.vx - vNx;
+              const vTy = orb.vy - vNy;
+
+              const newVN = -vN * bumperRestitution;
+              orb.vx = vTx + newVN * nx;
+              orb.vy = vTy + newVN * ny;
+            }
+          }
+        }
+      }
+
+      // --- INNER JELLY RING CRUMPLE (VISUAL ONLY) ---
+      updateInnerJelly(dt);
+      updateJellyDebris(dt);
+      orbJellyPulse *= 0.92;
+
+      // If the orb crosses the inner ring stroke (only on the solid 270° arc),
+      // the ring dents and sheds jelly fragments. No collision is applied.
+      const innerR = target.radius * INNER_RING_SCALE;
+      if (dist > 0.0001) {
+        const TAU2 = Math.PI * 2;
+
+        // Inner ring is drawn in the target frame rotated by +PI (see drawTarget)
+        let localInnerA = Math.atan2(dy, dx) - (target.angle + Math.PI);
+        localInnerA = ((localInnerA % TAU2) + TAU2) % TAU2;
+
+        const inInnerArc = (localInnerA >= INNER_ARC_START && localInnerA <= INNER_ARC_END);
+        if (inInnerArc) {
+          const prevDxI = prevX - target.x;
+          const prevDyI = prevY - target.y;
+          const prevDistI = Math.hypot(prevDxI, prevDyI);
+
+          const crossedI = (prevDistI - innerR) * (dist - innerR) <= 0;
+          const overlapI = Math.abs(dist - innerR) < orb.radius * 0.95 || crossedI;
+
+          if (overlapI) {
+            const nxI = dx / dist;
+            const nyI = dy / dist;
+
+            const hitX = target.x + nxI * innerR;
+            const hitY = target.y + nyI * innerR;
+
+            crumpleInnerJelly(localInnerA, orb.vx, orb.vy, hitX, hitY, nxI, nyI, timeInSeconds);
+          }
+        }
+      }
+
+      // Check Score
+      if (dist < target.radius * 0.8 - orb.radius * 0.5) {
+        score++;
+        scoreEl.innerText = score;
+        scoreEl.style.transform = "scale(1.4)"; 
+        setTimeout(() => scoreEl.style.transform = "scale(1)", 150);
+        
+        createExplosion(target.x, target.y, 40, COLOR_TARGET);
+        createExplosion(target.x, target.y, 20, "#ffffff");
+        shakeIntensity = 15;
+
+        // Feedback: Rain + Gentle Sound
+        Haptics.rain();
+        playSound('success');
+        
+        placeTarget();
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        p.size *= 0.95;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+    }
+
+    
+    // --- BACKGROUND RENDER (wired to menu settings) ---
+    const __gptBg = {
+      noise: null,
+      nctx: null,
+      nw: 128,
+      nh: 128,
+      lastNoiseT: -999
+    };
+
+    function _gptEnsureNoise() {
+      if (__gptBg.noise) return;
+      __gptBg.noise = document.createElement("canvas");
+      __gptBg.noise.width = __gptBg.nw;
+      __gptBg.noise.height = __gptBg.nh;
+      __gptBg.nctx = __gptBg.noise.getContext("2d", { willReadFrequently: true });
+    }
+
+    function _gptUpdateNoise(t) {
+      _gptEnsureNoise();
+      if (!__gptBg.nctx) return;
+      if (t - __gptBg.lastNoiseT < 0.12) return;
+      __gptBg.lastNoiseT = t;
+
+      const w = __gptBg.nw, h = __gptBg.nh;
+      const img = __gptBg.nctx.createImageData(w, h);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const v = (Math.random() * 255) | 0;
+        d[i] = v; d[i+1] = v; d[i+2] = v; d[i+3] = 255;
+      }
+      __gptBg.nctx.putImageData(img, 0, 0);
+    }
+
+    function _gptGetPalette(name) {
+      // Keep these intentionally few and stable (performance + clarity).
+      // "theme" derives from the live theme colors.
+      if (name === "ocean")   return ["#003b73", "#0066cc", "#00a6fb", "#00f3ff"];
+      if (name === "sunset")  return ["#220022", "#6a0572", "#ff7a00", "#ffd166"];
+      if (name === "forest")  return ["#061c14", "#0b6e4f", "#43aa8b", "#a7f3d0"];
+      if (name === "candy")   return ["#2b0b2e", "#ff66cc", "#a855f7", "#00f3ff"];
+      if (name === "mono")    return ["#0b0b10", "#1d1d28", "#4b4b5a", "#e6e6ee"];
+      // default: "theme"
+      return [COLOR_ORB_GLOW, COLOR_TARGET, COLOR_JELLY, "#ffffff"];
+    }
+
+    function _gptPickCycleColor(pal, t, speed, phase) {
+      const n = pal.length;
+      if (!n) return COLOR_BG;
+      const w = (0.08 + 0.42 * _mClamp(speed || 0, 0, 2));
+      const x = (t * w + (phase || 0)) % n;
+      const i0 = Math.floor(x);
+      const i1 = (i0 + 1) % n;
+      const f = x - i0;
+
+      const a = _gptHexToRgb(pal[i0]);
+      const b = _gptHexToRgb(pal[i1]);
+      const r = (a.r + (b.r - a.r) * f) | 0;
+      const g = (a.g + (b.g - a.g) * f) | 0;
+      const bb = (a.b + (b.b - a.b) * f) | 0;
+      return _gptRgbToHex(r, g, bb);
+    }
+
+    function _gptDrawVignette(strength) {
+      const s = _mClamp(strength || 0, 0, 1);
+      if (s <= 0) return;
+      const g = ctx.createRadialGradient(width * 0.5, height * 0.5, Math.min(width, height) * 0.15,
+                                         width * 0.5, height * 0.5, Math.max(width, height) * 0.70);
+      g.addColorStop(0, "rgba(0,0,0,0)");
+      g.addColorStop(1, `rgba(0,0,0,${0.85 * s})`);
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
+
+    function _gptDrawStars(t, density, twinkle, blend) {
+      const d = _mClamp(density || 1, 0.25, 2.0);
+      const targetCount = Math.max(8, Math.round(80 * d));
+      while (stars.length < targetCount) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          size: Math.random() * 2.0 + 0.5,
+          alpha: 0.15 + Math.random() * 0.35,
+          seed: Math.random() * Math.PI * 2
+        });
+      }
+      if (stars.length > targetCount) stars.length = targetCount;
+
+      // Ensure older stars have twinkle metadata
+      for (const s of stars) {
+        if (s.alpha == null) s.alpha = 0.15 + Math.random() * 0.35;
+        if (s.seed == null) s.seed = Math.random() * Math.PI * 2;
+      }
+
+      const b = _mClamp(blend || 0, 0, 1);
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "#ffffff";
+
+      for (const s of stars) {
+        s.y += s.size * 0.05;
+        if (s.y > height) s.y = 0;
+
+        let a = s.alpha * (0.35 + 0.55 * b);
+        if (twinkle) a *= (0.55 + 0.45 * Math.sin(t * 1.9 + s.seed));
+
+        ctx.globalAlpha = _mClamp(a, 0, 0.9);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function _gptDrawBackground(t) {
+      const ms = (typeof menuState !== "undefined" && menuState) ? menuState : null;
+
+      const style = (ms && ms.bgStyle) ? ms.bgStyle : "classic";
+      const cycle = !!(ms && ms.bgCycle);
+      const speed = (ms && ms.bgCycleSpeed != null) ? ms.bgCycleSpeed : 0.70;
+      const paletteName = (ms && ms.bgPalette) ? ms.bgPalette : "theme";
+      const blend = (ms && ms.bgBlend != null) ? ms.bgBlend : 0.65;
+      const vignette = (ms && ms.vignette != null) ? ms.vignette : 0.0;
+      const grainOn = !!(ms && ms.grainEnabled);
+      const grainAmt = (ms && ms.grainAmount != null) ? ms.grainAmount : 0.18;
+      const starDensity = (ms && ms.starDensity != null) ? ms.starDensity : 1.0;
+      const twinkle = !!(ms && ms.starTwinkle);
+      const bgBase = (ms && ms.bgColor) ? ms.bgColor : COLOR_BG;
+
+      ctx.save();
+      ctx.globalAlpha = 1.0;
+      ctx.globalCompositeOperation = "source-over";
+
+      // Base fill
+      ctx.fillStyle = bgBase;
+      ctx.fillRect(0, 0, width, height);
+
+      const pal = _gptGetPalette(paletteName);
+      const c0 = cycle ? _gptPickCycleColor(pal, t, speed, 0.00) : pal[0];
+      const c1 = cycle ? _gptPickCycleColor(pal, t, speed, 0.35) : pal[Math.min(1, pal.length - 1)];
+      const c2 = cycle ? _gptPickCycleColor(pal, t, speed, 0.70) : pal[Math.min(2, pal.length - 1)];
+
+      const a = 0.38 * _mClamp(blend, 0, 1);
+
+      if (style === "linear") {
+        const g = ctx.createLinearGradient(0, 0, width, height);
+        g.addColorStop(0, _gptRGBA(c0, a));
+        g.addColorStop(1, _gptRGBA(c1, a));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, width, height);
+      } else if (style === "radial") {
+        const cx = width * (0.5 + 0.18 * Math.sin(t * 0.11));
+        const cy = height * (0.5 + 0.14 * Math.cos(t * 0.13));
+        const g = ctx.createRadialGradient(cx, cy, Math.min(width, height) * 0.08, cx, cy, Math.max(width, height) * 0.75);
+        g.addColorStop(0, _gptRGBA(c1, a));
+        g.addColorStop(0.6, _gptRGBA(c2, a * 0.7));
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, width, height);
+      } else if (style === "aurora") {
+        // Soft bands, intentionally cheap to draw (mobile safe)
+        ctx.save();
+        ctx.globalAlpha = a * 0.95;
+        ctx.translate(width * 0.5, height * 0.5);
+        ctx.rotate(Math.sin(t * 0.07) * 0.20);
+        for (let i = 0; i < 3; i++) {
+          const g = ctx.createLinearGradient(-width, -height, width, height);
+          const ccA = (i === 0) ? c0 : (i === 1 ? c1 : c2);
+          const ccB = (i === 0) ? c1 : (i === 1 ? c2 : c0);
+          g.addColorStop(0, _gptRGBA(ccA, 0.0));
+          g.addColorStop(0.5, _gptRGBA(ccA, 0.85));
+          g.addColorStop(1, _gptRGBA(ccB, 0.0));
+          ctx.fillStyle = g;
+          ctx.fillRect(-width * 0.7 + i * 120, -height * 0.9, width * 0.9, height * 1.8);
+        }
+        ctx.restore();
+      } else if (style === "grid") {
+        const step = 60;
+        ctx.save();
+        ctx.globalAlpha = (0.10 + 0.18 * _mClamp(blend, 0, 1));
+        ctx.strokeStyle = _gptRGBA(COLOR_ORB_GLOW, 0.22);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = 0; x <= width; x += step) {
+          ctx.moveTo(x + 0.5, 0);
+          ctx.lineTo(x + 0.5, height);
+        }
+        for (let y = 0; y <= height; y += step) {
+          ctx.moveTo(0, y + 0.5);
+          ctx.lineTo(width, y + 0.5);
+        }
+        ctx.stroke();
+
+        // Heavier lines
+        ctx.globalAlpha *= 0.65;
+        ctx.strokeStyle = _gptRGBA(COLOR_ORB_GLOW, 0.35);
+        ctx.beginPath();
+        for (let x = 0; x <= width; x += step * 4) {
+          ctx.moveTo(x + 0.5, 0);
+          ctx.lineTo(x + 0.5, height);
+        }
+        for (let y = 0; y <= height; y += step * 4) {
+          ctx.moveTo(0, y + 0.5);
+          ctx.lineTo(width, y + 0.5);
+        }
+        ctx.stroke();
+        ctx.restore();
+      } else if (style === "classic") {
+        // Keep it close to the original look, but now respects palette/cycle/blend.
+        const g = ctx.createRadialGradient(width * 0.55, height * 0.35, 10, width * 0.55, height * 0.35, Math.max(width, height) * 0.8);
+        g.addColorStop(0, _gptRGBA(c1, a * 0.55));
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        // "solid" and any unknown
+        // already base-filled
+      }
+
+      // Stars (density + optional twinkle)
+      _gptDrawStars(t, starDensity, twinkle, blend);
+
+      // Grain (subtle, optional)
+      if (grainOn && grainAmt > 0) {
+        _gptUpdateNoise(t);
+        if (__gptBg.noise) {
+          ctx.save();
+          ctx.globalAlpha = _mClamp(grainAmt, 0, 1) * 0.22;
+          ctx.globalCompositeOperation = "source-over";
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(__gptBg.noise, 0, 0, width, height);
+          ctx.restore();
+        }
+      }
+
+      // Vignette
+      _gptDrawVignette(vignette);
+
+      ctx.restore();
+    }
+
+function draw() {
+      const __t = performance.now() * 0.001;
+      _gptDrawBackground(__t);
+
+      ctx.save();
+
+      if (shakeIntensity > 0) {
+        const sx = (Math.random() - 0.5) * shakeIntensity;
+        const sy = (Math.random() - 0.5) * shakeIntensity;
+        ctx.translate(sx, sy);
+      }
+
+      ctx.globalCompositeOperation = "lighter";
+
+      if (isPressing) {
+        const now = performance.now();
+        const dur = Math.min(now - pressStartTime, 800);
+        const strength = dur / 800; 
+
+        const dx = orb.x - pressStartPos.x;
+        const dy = orb.y - pressStartPos.y;
+        
+        const grad = ctx.createLinearGradient(pressStartPos.x, pressStartPos.y, orb.x, orb.y);
+        grad.addColorStop(0, "rgba(255, 255, 255, 0)");
+        grad.addColorStop(1, _gptRGBA(COLOR_TARGET, 0.8)); 
+
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2 + strength * 4;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(pressStartPos.x, pressStartPos.y);
+        ctx.lineTo(orb.x, orb.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + strength * 0.4})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pressStartPos.x, pressStartPos.y, 20 + strength * 10, 0, Math.PI*2);
+        ctx.stroke();
+
+        // Forward trajectory preview (visual only): shows where the orb will go if released now.
+        {
+          // Compute the same impulse that onUp() would apply at the current hold strength.
+          let p_dx = orb.x - pressStartPos.x;
+          let p_dy = orb.y - pressStartPos.y;
+          let p_dist = Math.hypot(p_dx, p_dy);
+          if (p_dist < 0.1) p_dist = 0.1;
+
+          const p_nx = p_dx / p_dist;
+          const p_ny = p_dy / p_dist;
+
+          const p_power = 1000 * strength; // matches onUp(): power = 1000 * (duration / 800)
+
+          // Start from current motion, then add the predicted impulse.
+          let px = orb.x;
+          let py = orb.y;
+          let pvx = orb.vx + p_nx * p_power;
+          let pvy = orb.vy + p_ny * p_power;
+
+          const pdt = 1 / 60;
+          const steps = 36;
+
+          // First pass: simulate to get the end point for a gradient.
+          let endX = px, endY = py;
+          for (let i = 0; i < steps; i++) {
+            // Same core physics as update() (visual-only)
+            pvy += 47.25 * pdt;
+            px += pvx * pdt;
+            py += pvy * pdt;
+            pvx *= 0.98;
+            pvy *= 0.98;
+
+            const rr = orb.radius;
+            if (px < rr) { px = rr; pvx *= -0.7; }
+            else if (px > width - rr) { px = width - rr; pvx *= -0.7; }
+            if (py < rr) { py = rr; pvy *= -0.7; }
+            else if (py > height - rr) { py = height - rr; pvy *= -0.7; }
+
+            endX = px; endY = py;
+          }
+
+          // Second pass: draw the predicted path.
+          px = orb.x; py = orb.y;
+          pvx = orb.vx + p_nx * p_power;
+          pvy = orb.vy + p_ny * p_power;
+
+          const fGrad = ctx.createLinearGradient(orb.x, orb.y, endX, endY);
+          fGrad.addColorStop(0, _gptRGBA(COLOR_ORB_GLOW, 0.65));
+          fGrad.addColorStop(1, _gptRGBA(COLOR_ORB_GLOW, 0.05));
+
+          ctx.strokeStyle = fGrad;
+          ctx.lineWidth = 1.2 + strength * 2.0;
+          ctx.setLineDash([3, 7]);
+          ctx.beginPath();
+          ctx.moveTo(orb.x, orb.y);
+
+          for (let i = 0; i < steps; i++) {
+            pvy += 47.25 * pdt;
+            px += pvx * pdt;
+            py += pvy * pdt;
+            pvx *= 0.98;
+            pvy *= 0.98;
+
+            const rr = orb.radius;
+            if (px < rr) { px = rr; pvx *= -0.7; }
+            else if (px > width - rr) { px = width - rr; pvx *= -0.7; }
+            if (py < rr) { py = rr; pvy *= -0.7; }
+            else if (py > height - rr) { py = height - rr; pvy *= -0.7; }
+
+            // Skip every other point for a lighter draw, still feels fluid.
+            if (i % 2 === 0) ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Endpoint hint
+          ctx.fillStyle = COLOR_ORB_GLOW;
+          ctx.globalAlpha = 0.12 + strength * 0.18;
+          ctx.beginPath();
+          ctx.arc(endX, endY, 5 + strength * 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
+        }
+
+      }
+
+      drawTarget();
+
+      if (trail.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(trail[0].x, trail[0].y);
+        for (let i = 1; i < trail.length; i++) {
+            const xc = (trail[i].x + trail[i - 1].x) / 2;
+            const yc = (trail[i].y + trail[i - 1].y) / 2;
+            ctx.quadraticCurveTo(trail[i - 1].x, trail[i - 1].y, xc, yc);
+        }
+        ctx.lineTo(orb.x, orb.y);
+        
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = orb.radius * 0.8;
+        ctx.strokeStyle = _gptRGBA(COLOR_ORB_GLOW, 0.15);
+        ctx.stroke();
+        
+        ctx.lineWidth = orb.radius * 0.3;
+        ctx.strokeStyle = _gptRGBA(COLOR_ORB_GLOW, 0.4);
+        ctx.stroke();
+      }
+
+      drawOrb();
+
+      for (const p of particles) {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1.0;
+
+      drawJellyDebris();
+
+      ctx.restore();
+    }
+
+    function drawTarget() {
+      const x = target.x;
+      const y = target.y;
+      const r = target.radius;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(target.angle);
+
+      const glow = ctx.createRadialGradient(0, 0, r * 0.5, 0, 0, r * 1.5);
+      glow.addColorStop(0, _gptRGBA(COLOR_TARGET, 0));
+      glow.addColorStop(0.5, _gptRGBA(COLOR_TARGET, 0.2));
+      glow.addColorStop(1, _gptRGBA(COLOR_TARGET, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.5, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.strokeStyle = COLOR_TARGET;
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 1.5);
+      ctx.stroke();
+
+      ctx.rotate(Math.PI);
+      drawInnerJellyRing(r * INNER_RING_SCALE);
+
+      ctx.restore();
+    }
+
+    function drawOrb() {
+      const x = orb.x;
+      const y = orb.y;
+      const r = orb.radius;
+
+      // v49: glow pulse feedback when jelly is absorbed (visual only)
+      const glowSize = 2.55 + orbJellyPulse * 1.6;
+      const grad1 = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * glowSize);
+      grad1.addColorStop(0, _gptRGBA(COLOR_ORB_GLOW, 0.82));
+      grad1.addColorStop(0.5, _gptRGBA(COLOR_ORB_GLOW, 0.1));
+      grad1.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+      ctx.fillStyle = grad1;
+      ctx.beginPath();
+      ctx.arc(x, y, r * glowSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+  
+// ==============================
+// Settings Menu Engine (ported UI)
+// Keeps AI-Studio gameplay intact; applies only safe side-effects (volume + haptics + mild gravity scaling).
+// ==============================
+const MENU_STORE_KEY = "ai_studio_neon_menu_settings_gpt_v43";
+const MENU_BEST_KEY  = "ai_studio_bestscore_gpt_v43";
+
+const MENU_DEFAULTS = Object.freeze({
+  // Modes
+  moodMode: "serenity",
+
+  // Audio
+  audioEnabled: true,
+  masterVol: 0.45,          // 0..1
+  ambienceEnabled: true,
+  ambienceTone: 0.55,       // 0..1 (UI only in this build)
+  gammaEnabled: true,       // UI only in this build
+  reverb: 0.35,             // UI only in this build
+  sfxEnabled: true,         // UI only in this build
+  sfxVol: 0.60,             // UI only in this build
+
+  // Haptics
+  hapticsEnabled: true,
+  hapticsIntensity: 0.70,   // UI only in this build
+  rainMode: "rain",         // UI only in this build
+  holdGrain: true,
+  wallThump: true,
+
+  // Visuals (wired in v48: theme + live colors; others unchanged)
+  theme: "cyber",
+  bgColor: "#050508",
+  accentColor: "#00f3ff",
+  targetColor: "#ff0055",
+  jellyColor: "#ff88aa",
+  colorSlot: "accent",
+  trailLen: 20,
+  trailGlow: 0.55,
+  shakeEnabled: true,
+  shakeIntensity: 0.70,
+
+  // Background (UI only in this build)
+  bgStyle: "classic",
+  bgCycle: false,
+  bgCycleSpeed: 0.70,
+  bgPalette: "theme",
+  bgBlend: 0.65,
+  vignette: 0.0,
+  grainEnabled: false,
+  grainAmount: 0.18,
+  starDensity: 1.0,
+  starTwinkle: false,
+
+  // Gameplay (gravity has a safe partial effect in this build)
+  gravityScale: 1.0,
+  wallBounceEnabled: true
+});
+
+function _mClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+function _mHex(v, fallback) {
+  const s = (v || "").toString().trim();
+  const m = s.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (!m) return fallback;
+  if (m[1].length === 3) {
+    const a = m[1].split("");
+    return ("#" + a[0] + a[0] + a[1] + a[1] + a[2] + a[2]).toLowerCase();
+  }
+  return ("#" + m[1]).toLowerCase();
+}
+
+
+function loadMenuState() {
+  try {
+    const raw = localStorage.getItem(MENU_STORE_KEY);
+    if (!raw) return { ...MENU_DEFAULTS };
+    const s = JSON.parse(raw) || {};
+    const out = { ...MENU_DEFAULTS, ...s };
+
+    out.masterVol = _mClamp(+out.masterVol || MENU_DEFAULTS.masterVol, 0, 1);
+    out.sfxVol = _mClamp(+out.sfxVol || MENU_DEFAULTS.sfxVol, 0, 1);
+    out.ambienceTone = _mClamp(+out.ambienceTone || MENU_DEFAULTS.ambienceTone, 0, 1);
+    out.reverb = _mClamp(+out.reverb || MENU_DEFAULTS.reverb, 0, 1);
+    out.hapticsIntensity = _mClamp(+out.hapticsIntensity || MENU_DEFAULTS.hapticsIntensity, 0, 1);
+    out.trailLen = _mClamp(parseInt(out.trailLen, 10) || MENU_DEFAULTS.trailLen, 8, 60);
+    out.trailGlow = _mClamp(+out.trailGlow || MENU_DEFAULTS.trailGlow, 0, 1);
+    out.shakeIntensity = _mClamp(+out.shakeIntensity || MENU_DEFAULTS.shakeIntensity, 0, 1);
+
+    out.bgColor = _mHex(out.bgColor, MENU_DEFAULTS.bgColor);
+    out.accentColor = _mHex(out.accentColor, MENU_DEFAULTS.accentColor);
+    out.targetColor = _mHex(out.targetColor, MENU_DEFAULTS.targetColor);
+    out.jellyColor = _mHex(out.jellyColor, MENU_DEFAULTS.jellyColor);
+
+    out.bgCycleSpeed = _mClamp(+out.bgCycleSpeed || MENU_DEFAULTS.bgCycleSpeed, 0, 2);
+    out.bgBlend = _mClamp(+out.bgBlend || MENU_DEFAULTS.bgBlend, 0, 1);
+    out.vignette = _mClamp(+out.vignette || MENU_DEFAULTS.vignette, 0, 1);
+    out.grainAmount = _mClamp(+out.grainAmount || MENU_DEFAULTS.grainAmount, 0, 1);
+    out.starDensity = _mClamp(+out.starDensity || MENU_DEFAULTS.starDensity, 0.25, 2.0);
+
+    out.gravityScale = _mClamp(+out.gravityScale || MENU_DEFAULTS.gravityScale, 0.5, 1.5);
+
+    for (const k of [
+      "audioEnabled","ambienceEnabled","gammaEnabled","sfxEnabled",
+      "hapticsEnabled","holdGrain","wallThump","shakeEnabled",
+      "bgCycle","grainEnabled","starTwinkle","wallBounceEnabled"
+    ]) out[k] = !!out[k];
+
+    // light validation for enums (keeps UI stable even if storage is corrupted)
+    if (!["mist","rain","storm"].includes(out.rainMode)) out.rainMode = MENU_DEFAULTS.rainMode;
+    if (!["cyber","violet","mint"].includes(out.theme)) out.theme = MENU_DEFAULTS.theme;
+    if (!["bg","accent","target","jelly"].includes(out.colorSlot)) out.colorSlot = MENU_DEFAULTS.colorSlot;
+    if (!["classic","solid","linear","radial","aurora","grid"].includes(out.bgStyle)) out.bgStyle = MENU_DEFAULTS.bgStyle;
+    if (!["theme","ocean","sunset","forest","candy","mono"].includes(out.bgPalette)) out.bgPalette = MENU_DEFAULTS.bgPalette;
+
+    const allowedMoods = ["serenity","hope","joy","wonder","courage","melancholy","nostalgia","focus"];
+    if (!allowedMoods.includes(out.moodMode)) out.moodMode = MENU_DEFAULTS.moodMode;
+
+    return out;
+  } catch {
+    return { ...MENU_DEFAULTS };
+  }
+}
+
+function saveMenuState(silent = false) {
+  try { localStorage.setItem(MENU_STORE_KEY, JSON.stringify(menuState)); }
+  catch {}
+  if (!silent) showToast("Saved");
+}
+
+function loadBestScore() {
+  const v = parseInt(localStorage.getItem(MENU_BEST_KEY) || "0", 10);
+  return Number.isFinite(v) ? v : 0;
+}
+function saveBestScore(v) { try { localStorage.setItem(MENU_BEST_KEY, String(v)); } catch {} }
+
+let toastTimer = null;
+function showToast(msg = "Saved") {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add("visible");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("visible"), 900);
+}
+
+let menuState = loadMenuState();
+let bestScore = loadBestScore();
+
+function setSwitch(el, on) { if (el) el.dataset.on = on ? "true" : "false"; }
+function getSwitch(el) { return el && el.dataset.on === "true"; }
+
+function bindSwitch(id, key, onApply) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  setSwitch(el, !!menuState[key]);
+  el.addEventListener("click", () => {
+    menuState[key] = !getSwitch(el);
+    setSwitch(el, !!menuState[key]);
+    saveMenuState(false);
+    if (onApply) onApply();
+  });
+}
+
+function bindRange(id, key, toStoreFn, fromStoreFn, onApply) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = String(fromStoreFn(menuState[key]));
+  el.addEventListener("input", () => {
+    menuState[key] = toStoreFn(parseFloat(el.value));
+    if (onApply) onApply();
+  });
+  el.addEventListener("change", () => {
+    saveMenuState(false);
+  });
+}
+
+function bindSelect(id, key, onApply) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = String(menuState[key]);
+  el.addEventListener("change", () => {
+    menuState[key] = el.value;
+    saveMenuState(false);
+    if (onApply) onApply();
+  });
+}
+
+
+// --- v48: Visual wiring (Theme, Mood presets, RGB map) ---
+function _gptThemeDefaults(theme) {
+  if (theme === "violet") {
+    return { bg: "#070411", accent: "#b26bff", target: "#ff4d8d", jelly: "#d7b6ff" };
+  }
+  if (theme === "mint") {
+    return { bg: "#02110b", accent: "#43fbd6", target: "#ff6b6b", jelly: "#b9f6ff" };
+  }
+  // "cyber" (original defaults)
+  return { bg: "#050508", accent: "#00f3ff", target: "#ff0055", jelly: "#ff88aa" };
+}
+
+function _gptApplyLiveColorsFromMenu() {
+  // Keep these assignments tiny and explicit: renderer reads these globals.
+  const bg = menuState.bgColor || COLOR_BG;
+  const accent = menuState.accentColor || COLOR_ORB_GLOW;
+  const target = menuState.targetColor || COLOR_TARGET;
+  const jelly = menuState.jellyColor || COLOR_JELLY;
+
+  COLOR_BG = bg;
+  COLOR_ORB_GLOW = accent;
+  COLOR_TRAIL = accent;
+  COLOR_TARGET = target;
+  COLOR_JELLY = jelly;
+}
+
+function _gptApplyThemePreset(theme) {
+  const d = _gptThemeDefaults(theme);
+  menuState.bgColor = d.bg;
+  menuState.accentColor = d.accent;
+  menuState.targetColor = d.target;
+  menuState.jellyColor = d.jelly;
+
+  saveMenuState(true);
+  syncMenuUI();
+  applyMenuSideEffects();
+}
+
+function _gptApplyMoodPreset(mood) {
+  // Visual-only presets (no physics changes).
+  const p = {
+    serenity:   { theme: "cyber",  bgStyle: "classic", bgPalette: "theme",  bgCycle: false, bgBlend: 0.55, vignette: 0.10, grainEnabled: false, grainAmount: 0.10, starDensity: 0.95, starTwinkle: false },
+    hope:       { theme: "mint",   bgStyle: "aurora",  bgPalette: "ocean",  bgCycle: true,  bgCycleSpeed: 1.10, bgBlend: 0.70, vignette: 0.08, grainEnabled: false, grainAmount: 0.10, starDensity: 1.15, starTwinkle: true },
+    joy:        { theme: "mint",   bgStyle: "linear",  bgPalette: "candy",  bgCycle: true,  bgCycleSpeed: 1.25, bgBlend: 0.80, vignette: 0.03, grainEnabled: false, grainAmount: 0.08, starDensity: 1.05, starTwinkle: true },
+    wonder:     { theme: "violet", bgStyle: "radial",  bgPalette: "theme",  bgCycle: true,  bgCycleSpeed: 0.95, bgBlend: 0.72, vignette: 0.14, grainEnabled: false, grainAmount: 0.10, starDensity: 1.35, starTwinkle: true },
+    courage:    { theme: "cyber",  bgStyle: "grid",    bgPalette: "mono",   bgCycle: false, bgBlend: 0.65, vignette: 0.18, grainEnabled: true,  grainAmount: 0.18, starDensity: 0.85, starTwinkle: false },
+    melancholy: { theme: "violet", bgStyle: "solid",   bgPalette: "mono",   bgCycle: false, bgBlend: 0.35, vignette: 0.45, grainEnabled: true,  grainAmount: 0.25, starDensity: 0.55, starTwinkle: false },
+    nostalgia:  { theme: "violet", bgStyle: "linear",  bgPalette: "sunset", bgCycle: false, bgBlend: 0.55, vignette: 0.25, grainEnabled: true,  grainAmount: 0.22, starDensity: 0.80, starTwinkle: true },
+    focus:      { theme: "cyber",  bgStyle: "solid",   bgPalette: "mono",   bgCycle: false, bgBlend: 0.40, vignette: 0.22, grainEnabled: false, grainAmount: 0.08, starDensity: 0.40, starTwinkle: false }
+  };
+
+  const preset = p[mood];
+  if (!preset) return;
+
+  if (preset.theme) {
+    menuState.theme = preset.theme;
+    const d = _gptThemeDefaults(preset.theme);
+    menuState.bgColor = d.bg;
+    menuState.accentColor = d.accent;
+    menuState.targetColor = d.target;
+    menuState.jellyColor = d.jelly;
+  }
+
+  // Background + atmosphere knobs
+  for (const k of ["bgStyle","bgPalette","bgCycle","bgCycleSpeed","bgBlend","vignette","grainEnabled","grainAmount","starDensity","starTwinkle"]) {
+    if (preset[k] != null) menuState[k] = preset[k];
+  }
+
+  saveMenuState(true);
+  syncMenuUI();
+  applyMenuSideEffects();
+}
+
+function _gptGetSlotHex(slot) {
+  if (slot === "bg") return menuState.bgColor;
+  if (slot === "target") return menuState.targetColor;
+  if (slot === "jelly") return menuState.jellyColor;
+  return menuState.accentColor; // accent default
+}
+
+function _gptSetSlotHex(slot, hex) {
+  if (slot === "bg") menuState.bgColor = hex;
+  else if (slot === "target") menuState.targetColor = hex;
+  else if (slot === "jelly") menuState.jellyColor = hex;
+  else menuState.accentColor = hex;
+}
+
+let __gptColorUI = null;
+
+function _gptSyncColorUI() {
+  if (!__gptColorUI) return;
+  const slot = menuState.colorSlot || "accent";
+  const hex = _gptGetSlotHex(slot) || "#00f3ff";
+  const rgb = _gptHexToRgb(hex);
+
+  __gptColorUI.b.value = String(rgb.b);
+  __gptColorUI.hex.textContent = hex.toUpperCase();
+  __gptColorUI.preview.style.background = hex;
+
+  _gptDrawRgbMap(rgb.r, rgb.g, rgb.b);
+}
+
+function _gptDrawRgbMap(r, g, b) {
+  if (!__gptColorUI) return;
+  const canvas = __gptColorUI.canvas;
+  const c = __gptColorUI.ctx;
+  if (!canvas || !c) return;
+
+  const w = canvas.width, h = canvas.height;
+
+  // Base blue
+  c.globalCompositeOperation = "source-over";
+  c.globalAlpha = 1.0;
+  c.fillStyle = `rgb(0,0,${b|0})`;
+  c.fillRect(0, 0, w, h);
+
+  // Add R across X
+  c.globalCompositeOperation = "lighter";
+  const gx = c.createLinearGradient(0, 0, w, 0);
+  gx.addColorStop(0, "rgba(0,0,0,0)");
+  gx.addColorStop(1, "rgb(255,0,0)");
+  c.fillStyle = gx;
+  c.fillRect(0, 0, w, h);
+
+  // Add G across Y (top is 255)
+  const gy = c.createLinearGradient(0, 0, 0, h);
+  gy.addColorStop(0, "rgb(0,255,0)");
+  gy.addColorStop(1, "rgba(0,0,0,0)");
+  c.fillStyle = gy;
+  c.fillRect(0, 0, w, h);
+
+  c.globalCompositeOperation = "source-over";
+
+  // Indicator
+  const x = _mClamp(r / 255, 0, 1) * w;
+  const y = (1 - _mClamp(g / 255, 0, 1)) * h;
+
+  c.save();
+  c.lineWidth = 2;
+  c.strokeStyle = "rgba(0,0,0,0.55)";
+  c.beginPath();
+  c.arc(x, y, 7, 0, Math.PI * 2);
+  c.stroke();
+  c.strokeStyle = "rgba(255,255,255,0.85)";
+  c.beginPath();
+  c.arc(x, y, 6, 0, Math.PI * 2);
+  c.stroke();
+  c.restore();
+}
+
+function _gptSetupRgbMap() {
+  const canvas = document.getElementById("s_rgbMap");
+  const b = document.getElementById("s_rgbB");
+  const preview = document.getElementById("s_colorPreview");
+  const hex = document.getElementById("s_colorHex");
+  const resetBtn = document.getElementById("s_colorReset");
+
+  if (!canvas || !b || !preview || !hex || !resetBtn) return;
+
+  const ctx2 = canvas.getContext("2d");
+  __gptColorUI = { canvas, ctx: ctx2, b, preview, hex };
+
+  // Slot selector binding
+  bindSelect("s_colorSlot", "colorSlot", () => { _gptSyncColorUI(); });
+
+  // Slider updates B for current slot
+  let lastSave = 0;
+  function maybeSave(force) {
+    const now = performance.now();
+    if (force || (now - lastSave) > 250) {
+      lastSave = now;
+      saveMenuState(true);
+    }
+  }
+
+  b.addEventListener("input", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const slot = menuState.colorSlot || "accent";
+    const cur = _gptHexToRgb(_gptGetSlotHex(slot));
+    const nb = _mClamp(+b.value || 0, 0, 255) | 0;
+    const nextHex = _gptRgbToHex(cur.r, cur.g, nb);
+    _gptSetSlotHex(slot, nextHex);
+
+    _gptSyncColorUI();
+    applyMenuSideEffects();
+    maybeSave(false);
+  }, { passive: false });
+
+  // Pointer mapping for R/G
+  let dragging = false;
+
+  function setFromPointer(ev) {
+    const rect = canvas.getBoundingClientRect();
+    const px = _mClamp((ev.clientX - rect.left) / rect.width, 0, 1);
+    const py = _mClamp((ev.clientY - rect.top) / rect.height, 0, 1);
+
+    const r = (px * 255) | 0;
+    const g = ((1 - py) * 255) | 0;
+    const bb = _mClamp(+b.value || 0, 0, 255) | 0;
+
+    const slot = menuState.colorSlot || "accent";
+    const nextHex = _gptRgbToHex(r, g, bb);
+    _gptSetSlotHex(slot, nextHex);
+
+    _gptSyncColorUI();
+    applyMenuSideEffects();
+    maybeSave(false);
+  }
+
+  canvas.style.touchAction = "none";
+
+  canvas.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    dragging = true;
+    canvas.setPointerCapture(ev.pointerId);
+    setFromPointer(ev);
+  });
+
+  canvas.addEventListener("pointermove", (ev) => {
+    if (!dragging) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    setFromPointer(ev);
+  });
+
+  canvas.addEventListener("pointerup", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    dragging = false;
+    maybeSave(true);
+  });
+
+  canvas.addEventListener("pointercancel", () => {
+    dragging = false;
+    maybeSave(true);
+  });
+
+  // Reset current slot to theme default
+  resetBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const slot = menuState.colorSlot || "accent";
+    const d = _gptThemeDefaults(menuState.theme);
+    const next = (slot === "bg") ? d.bg : (slot === "target" ? d.target : (slot === "jelly" ? d.jelly : d.accent));
+    _gptSetSlotHex(slot, next);
+    saveMenuState(false);
+    _gptSyncColorUI();
+    applyMenuSideEffects();
+  });
+
+  // Initial render
+  _gptSyncColorUI();
+}
+
+function applyMenuSideEffects() {
+  // Audio: map master volume to gain node
+  try {
+    if (typeof audioMasterGain !== "undefined" && audioMasterGain && audioMasterGain.gain) {
+      audioMasterGain.gain.value = menuState.soundVol;
+    }
+  } catch {}
+
+  // Audio: per-bus (if present)
+  try {
+    if (typeof audioBuses !== "undefined" && audioBuses) {
+      if (audioBuses.music && audioBuses.music.gain) audioBuses.music.gain.value = menuState.musicVol;
+      if (audioBuses.sfx && audioBuses.sfx.gain) audioBuses.sfx.gain.value = menuState.sfxVol;
+    }
+  } catch {}
+
+  // Visuals: live-updated theme colors
+  try { _gptApplyLiveColorsFromMenu(); } catch {}
+
+  // Haptics: gate existing haptics calls without editing gameplay logic
+  try {
+    if (typeof Haptics !== "undefined" && Haptics) {
+      const supported = ("vibrate" in navigator);
+
+      if (!Haptics.__gptMenuPatched) {
+        const _grain = Haptics.grain ? Haptics.grain.bind(Haptics) : null;
+        const _tap = Haptics.tap ? Haptics.tap.bind(Haptics) : null;
+        const _success = Haptics.success ? Haptics.success.bind(Haptics) : null;
+        const _warn = Haptics.warn ? Haptics.warn.bind(Haptics) : null;
+
+        if (_grain) Haptics.grain = () => {
+          if (!supported) return;
+          if (!menuState.hapticsEnabled) return;
+          if (!menuState.holdGrain) return;
+          _grain();
+        };
+        if (_tap) Haptics.tap = () => {
+          if (!supported) return;
+          if (!menuState.hapticsEnabled) return;
+          _tap();
+        };
+        if (_success) Haptics.success = () => {
+          if (!supported) return;
+          if (!menuState.hapticsEnabled) return;
+          _success();
+        };
+        if (_warn) Haptics.warn = () => {
+          if (!supported) return;
+          if (!menuState.hapticsEnabled) return;
+          _warn();
+        };
+
+        Haptics.__gptMenuPatched = true;
+      }
+    }
+  } catch {}
+}
+
+function syncMenuUI() {
+  // Modes
+  const moodSel = document.getElementById("s_moodMode");
+  if (moodSel) moodSel.value = menuState.moodMode;
+
+  // Audio
+  setSwitch(document.getElementById("s_audioEnabled"), menuState.audioEnabled);
+  const mv = document.getElementById("s_masterVol");
+  if (mv) mv.value = String(Math.round(menuState.masterVol * 100));
+  setSwitch(document.getElementById("s_ambienceEnabled"), menuState.ambienceEnabled);
+  const at = document.getElementById("s_ambienceTone");
+  if (at) at.value = String(Math.round(menuState.ambienceTone * 100));
+  setSwitch(document.getElementById("s_gammaEnabled"), menuState.gammaEnabled);
+  const rv = document.getElementById("s_reverb");
+  if (rv) rv.value = String(Math.round(menuState.reverb * 100));
+  setSwitch(document.getElementById("s_sfxEnabled"), menuState.sfxEnabled);
+  const sv = document.getElementById("s_sfxVol");
+  if (sv) sv.value = String(Math.round(menuState.sfxVol * 100));
+
+  // Haptics
+  setSwitch(document.getElementById("s_hapticsEnabled"), menuState.hapticsEnabled);
+  const hi = document.getElementById("s_hapticsIntensity");
+  if (hi) hi.value = String(Math.round(menuState.hapticsIntensity * 100));
+  const rm = document.getElementById("s_rainMode");
+  if (rm) rm.value = menuState.rainMode;
+  setSwitch(document.getElementById("s_holdGrain"), menuState.holdGrain);
+  setSwitch(document.getElementById("s_wallThump"), menuState.wallThump);
+
+  // Visuals
+  const th = document.getElementById("s_theme");
+  if (th) th.value = menuState.theme;
+  const cs = document.getElementById("s_colorSlot");
+  if (cs) cs.value = menuState.colorSlot;
+  if (typeof _gptSyncColorUI === "function") _gptSyncColorUI();
+  const tl = document.getElementById("s_trailLen");
+  if (tl) tl.value = String(menuState.trailLen);
+  const tg = document.getElementById("s_trailGlow");
+  if (tg) tg.value = String(Math.round(menuState.trailGlow * 100));
+  setSwitch(document.getElementById("s_shakeEnabled"), menuState.shakeEnabled);
+  const si = document.getElementById("s_shakeIntensity");
+  if (si) si.value = String(Math.round(menuState.shakeIntensity * 100));
+
+  // Background
+  const bs = document.getElementById("s_bgStyle");
+  if (bs) bs.value = menuState.bgStyle;
+  setSwitch(document.getElementById("s_bgCycle"), menuState.bgCycle);
+  const bcs = document.getElementById("s_bgCycleSpeed");
+  if (bcs) bcs.value = String(Math.round(menuState.bgCycleSpeed * 50)); // 0..100 UI
+  const bp = document.getElementById("s_bgPalette");
+  if (bp) bp.value = menuState.bgPalette;
+  const bb = document.getElementById("s_bgBlend");
+  if (bb) bb.value = String(Math.round(menuState.bgBlend * 100));
+  const vg = document.getElementById("s_vignette");
+  if (vg) vg.value = String(Math.round(menuState.vignette * 100));
+  setSwitch(document.getElementById("s_grainEnabled"), menuState.grainEnabled);
+  const ga = document.getElementById("s_grainAmount");
+  if (ga) ga.value = String(Math.round(menuState.grainAmount * 100));
+  const sd = document.getElementById("s_starDensity");
+  if (sd) sd.value = String(Math.round(menuState.starDensity * 100)); // 25..200 UI
+  setSwitch(document.getElementById("s_starTwinkle"), menuState.starTwinkle);
+
+  // Gameplay
+  const gs = document.getElementById("s_gravity");
+  if (gs) gs.value = String(Math.round(menuState.gravityScale * 100));
+  setSwitch(document.getElementById("s_wallBounce"), menuState.wallBounceEnabled);
+
+  // Best score
+  const bsEl = document.getElementById("best-score");
+  if (bsEl) bsEl.textContent = String(bestScore);
+
+  // Compatibility label
+  const compat = document.getElementById("compat-text");
+  if (compat) compat.textContent = ("vibrate" in navigator) ? "Ready" : "No haptics";
+}
+
+// Bind controls
+bindSelect("s_moodMode", "moodMode", () => { _gptApplyMoodPreset(menuState.moodMode); });
+
+bindSwitch("s_audioEnabled", "audioEnabled", applyMenuSideEffects);
+bindRange("s_masterVol", "masterVol", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100), applyMenuSideEffects);
+bindSwitch("s_ambienceEnabled", "ambienceEnabled");
+bindRange("s_ambienceTone", "ambienceTone", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100));
+bindSwitch("s_gammaEnabled", "gammaEnabled");
+bindRange("s_reverb", "reverb", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100));
+bindSwitch("s_sfxEnabled", "sfxEnabled");
+bindRange("s_sfxVol", "sfxVol", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100));
+
+bindSwitch("s_hapticsEnabled", "hapticsEnabled", applyMenuSideEffects);
+bindRange("s_hapticsIntensity", "hapticsIntensity", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100), applyMenuSideEffects);
+bindSelect("s_rainMode", "rainMode");
+bindSwitch("s_holdGrain", "holdGrain", applyMenuSideEffects);
+bindSwitch("s_wallThump", "wallThump", applyMenuSideEffects);
+
+bindSelect("s_theme", "theme", () => { _gptApplyThemePreset(menuState.theme); });
+bindRange("s_trailLen", "trailLen", (v) => _mClamp(v, 8, 60), (v) => _mClamp(v, 8, 60));
+bindRange("s_trailGlow", "trailGlow", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100));
+bindSwitch("s_shakeEnabled", "shakeEnabled");
+bindRange("s_shakeIntensity", "shakeIntensity", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100));
+
+bindSelect("s_bgStyle", "bgStyle");
+bindSwitch("s_bgCycle", "bgCycle");
+bindRange("s_bgCycleSpeed", "bgCycleSpeed",
+  (v) => _mClamp(v / 50, 0, 2), // UI 0..100 => 0..2
+  (v) => Math.round(_mClamp(v, 0, 2) * 50)
+);
+bindSelect("s_bgPalette", "bgPalette");
+bindRange("s_bgBlend", "bgBlend", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100));
+bindRange("s_vignette", "vignette", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100));
+bindSwitch("s_grainEnabled", "grainEnabled");
+bindRange("s_grainAmount", "grainAmount", (v) => _mClamp(v / 100, 0, 1), (v) => Math.round(_mClamp(v, 0, 1) * 100));
+bindRange("s_starDensity", "starDensity",
+  (v) => _mClamp(v / 100, 0.25, 2.0), // UI 25..200 -> 0.25..2.0
+  (v) => Math.round(_mClamp(v, 0.25, 2.0) * 100)
+);
+bindSwitch("s_starTwinkle", "starTwinkle");
+
+bindRange("s_gravity", "gravityScale",
+  (v) => _mClamp(v / 100, 0.5, 1.5),
+  (v) => Math.round(_mClamp(v, 0.5, 1.5) * 100)
+);
+bindSwitch("s_wallBounce", "wallBounceEnabled");
+
+// Reset button
+const resetBtn = document.getElementById("s_reset");
+if (resetBtn) {
+  resetBtn.addEventListener("click", () => {
+    try {
+      localStorage.removeItem(MENU_STORE_KEY);
+      localStorage.removeItem(MENU_BEST_KEY);
+    } catch {}
+    menuState = loadMenuState();
+    bestScore = 0;
+    syncMenuUI();
+    applyMenuSideEffects();
+    showToast("Reset");
+  });
+}
+
+// Apply initial state
+syncMenuUI();
+applyMenuSideEffects();
+_gptSetupRgbMap();
+
+// Patch update() without editing the AI-Studio core function text
+(function patchUpdateForMenu() {
+  if (typeof update !== "function") return;
+  if (update.__gptMenuPatched) return;
+
+  const BASE_GRAVITY = 47.25;
+
+  const _update = update;
+  function patchedUpdate(dt, timeInSeconds) {
+    _update(dt, timeInSeconds);
+
+    // Best score tracking
+    if (typeof score !== "undefined" && Number.isFinite(score) && score > bestScore) {
+      bestScore = score;
+      saveBestScore(bestScore);
+      const bsEl = document.getElementById("best-score");
+      if (bsEl) bsEl.textContent = String(bestScore);
+    }
+
+    // Mild gravity scaling (adds extra acceleration; base AI-studio gravity remains unchanged)
+    try {
+      if (typeof orb !== "undefined" && orb && Number.isFinite(menuState.gravityScale)) {
+        const extra = BASE_GRAVITY * (_mClamp(menuState.gravityScale, 0.5, 1.5) - 1.0);
+        if (extra !== 0) orb.vy += extra * dt;
+      }
+    } catch {}
+
+    // Trail length (safe partial effect: can reduce below 20; cannot exceed AI-studio's internal cap without core edits)
+    try {
+      if (typeof trail !== "undefined" && Array.isArray(trail)) {
+        const maxLen = _mClamp(parseInt(menuState.trailLen, 10) || 20, 8, 60);
+        while (trail.length > Math.min(20, maxLen)) trail.shift();
+      }
+    } catch {}
+  }
+
+  patchedUpdate.__gptMenuPatched = true;
+  update = patchedUpdate;
+})();
+
+  </script>
+</body>
+</html>
